@@ -19,10 +19,6 @@ import { analyzeLockRisks, calculateRiskScore } from "./analyzers/lock-risk.js";
 import { analyzeDataLoss } from "./analyzers/data-loss.js";
 import { generateRollback } from "./generators/rollback.js";
 import { detectConflicts, formatConflictReport } from "./analyzers/conflicts.js";
-import { validateLicense, formatUpgradePrompt } from "./license.js";
-
-// License check (reads MCP_LICENSE_KEY env var once at startup)
-const license = validateLicense(process.env.MCP_LICENSE_KEY, "migration-advisor");
 
 /**
  * Format parser warnings into a markdown section.
@@ -294,27 +290,6 @@ server.tool(
     sql: z.string().describe("The SQL content of the migration file"),
   },
   async ({ filename, sql }) => {
-    // Pro feature gate — free users get a preview, Pro users get full output
-    if (!license.isPro) {
-      const migration = parseMigration(filename, sql);
-      const report = generateRollback(migration);
-
-      // Show a preview: statement count and reversibility, but not the actual SQL
-      let preview = `## Rollback Preview: ${filename}\n\n`;
-      preview += `**Reversible**: ${report.fullyReversible ? "Yes" : "Partially"}\n`;
-      preview += `**Statements**: ${report.statements.length}\n`;
-      preview += `**Warnings**: ${report.warnings.length}\n\n`;
-      preview += formatUpgradePrompt(
-        "generate_rollback",
-        "Full rollback SQL generation with:\n" +
-        "- Complete reverse DDL for all migration operations\n" +
-        "- Flyway schema_history cleanup statements\n" +
-        "- Irreversibility warnings with manual intervention guidance"
-      );
-
-      return { content: [{ type: "text" as const, text: preview }] };
-    }
-
     const migration = parseMigration(filename, sql);
     const report = generateRollback(migration);
 
