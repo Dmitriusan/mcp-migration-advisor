@@ -1,6 +1,6 @@
 {
   "name": "mcp-migration-advisor",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "MCP server for database migration risk analysis — Flyway and Liquibase XML/YAML/SQL support with lock detection and conflict analysis",
   "main": "build/index.js",
   "bin": {
@@ -20,17 +20,21 @@
   ],
   "keywords": [
     "mcp",
+    "mcp-server",
     "model-context-protocol",
-    "database",
+    "ai",
+    "claude",
+    "anthropic",
     "migration",
+    "database-migration",
+    "schema-migration",
+    "database",
     "flyway",
     "liquibase",
     "schema",
     "risk-analysis",
     "postgresql",
-    "mysql",
-    "ai",
-    "claude"
+    "mysql"
   ],
   "author": "Dmytro Lisnichenko",
   "license": "MIT",
