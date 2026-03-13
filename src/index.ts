@@ -12,7 +12,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 
-import { parseMigration } from "./parsers/flyway-sql.js";
+import { parseMigration, ParsedMigration } from "./parsers/flyway-sql.js";
 import { parseLiquibaseXml } from "./parsers/liquibase-xml.js";
 import { parseLiquibaseYaml } from "./parsers/liquibase-yaml.js";
 import { analyzeLockRisks, calculateRiskScore } from "./analyzers/lock-risk.js";
@@ -23,6 +23,21 @@ import { validateLicense, formatUpgradePrompt } from "./license.js";
 
 // License check (reads MCP_LICENSE_KEY env var once at startup)
 const license = validateLicense(process.env.MCP_LICENSE_KEY, "migration-advisor");
+
+/**
+ * Format parser warnings into a markdown section.
+ * Returns empty string if there are no warnings.
+ */
+function formatParserWarnings(migration: ParsedMigration): string {
+  if (migration.warnings.length === 0) return "";
+  let output = "### Parser Warnings\n\n";
+  output += `> ${migration.warnings.length} DDL statement(s) could not be fully parsed and were classified as OTHER\n\n`;
+  for (const w of migration.warnings) {
+    output += `- \`${w.snippet}\`\n`;
+  }
+  output += "\n";
+  return output;
+}
 
 // Handle --help
 if (process.argv.includes("--help") || process.argv.includes("-h")) {
@@ -109,6 +124,8 @@ server.tool(
       output += "### Data Loss Analysis\n\nNo data loss risks detected.\n\n";
     }
 
+    output += formatParserWarnings(migration);
+
     return {
       content: [{ type: "text" as const, text: output }],
     };
@@ -161,6 +178,8 @@ server.tool(
       output += "### No risks detected.\n";
     }
 
+    output += formatParserWarnings(migration);
+
     return { content: [{ type: "text" as const, text: output }] };
   }
 );
@@ -210,6 +229,8 @@ server.tool(
     if (lockRisks.length === 0 && dataLossIssues.length === 0) {
       output += "### No risks detected.\n";
     }
+
+    output += formatParserWarnings(migration);
 
     return { content: [{ type: "text" as const, text: output }] };
   }

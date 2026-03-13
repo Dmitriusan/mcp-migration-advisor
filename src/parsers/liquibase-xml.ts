@@ -5,7 +5,7 @@
  * compatible with the same DDLStatement interface used by Flyway.
  */
 
-import { DDLStatement, ParsedMigration } from "./flyway-sql.js";
+import { DDLStatement, ParsedMigration, collectParserWarnings } from "./flyway-sql.js";
 
 interface ChangeSetInfo {
   id: string;
@@ -34,6 +34,7 @@ export function parseLiquibaseXml(xml: string): ParsedMigration {
     filename: "changelog.xml",
     isRepeatable: false,
     statements: allStatements,
+    warnings: collectParserWarnings(allStatements),
   };
 }
 

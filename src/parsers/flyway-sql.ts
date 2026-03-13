@@ -15,12 +15,19 @@ export interface DDLStatement {
   details: Record<string, string>;
 }
 
+export interface ParserWarning {
+  message: string;
+  /** First ~80 characters of the unrecognized statement for debugging */
+  snippet: string;
+}
+
 export interface ParsedMigration {
   version: string | null;
   description: string;
   filename: string;
   isRepeatable: boolean;
   statements: DDLStatement[];
+  warnings: ParserWarning[];
 }
 
 const FLYWAY_VERSIONED_RE = /^V(\d+(?:[._]\d+)*)__(.+)\.sql$/i;
@@ -199,12 +206,38 @@ function classifyStatement(raw: string): DDLStatement {
 }
 
 /**
+ * Build a snippet of up to ~80 characters from a raw statement for debugging.
+ */
+export function truncateSnippet(raw: string, maxLen = 80): string {
+  const oneLine = raw.replace(/\s+/g, " ").trim();
+  if (oneLine.length <= maxLen) return oneLine;
+  return oneLine.substring(0, maxLen) + "...";
+}
+
+/**
+ * Collect warnings for statements classified as OTHER.
+ */
+export function collectParserWarnings(statements: DDLStatement[]): ParserWarning[] {
+  const warnings: ParserWarning[] = [];
+  for (const stmt of statements) {
+    if (stmt.type === "OTHER") {
+      warnings.push({
+        message: "Unrecognized DDL statement classified as OTHER",
+        snippet: truncateSnippet(stmt.raw),
+      });
+    }
+  }
+  return warnings;
+}
+
+/**
  * Parse a complete Flyway migration file.
  */
 export function parseMigration(filename: string, sql: string): ParsedMigration {
   const { version, description, isRepeatable } = parseFlywayFilename(filename);
   const rawStatements = splitStatements(sql);
   const statements = rawStatements.map(classifyStatement);
+  const warnings = collectParserWarnings(statements);
 
   return {
     version,
@@ -212,5 +245,6 @@ export function parseMigration(filename: string, sql: string): ParsedMigration {
     filename,
     isRepeatable,
     statements,
+    warnings,
   };
 }
