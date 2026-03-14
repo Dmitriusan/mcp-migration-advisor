@@ -1,0 +1,32 @@
+name: mcp-migration-advisor
+displayName: Migration Advisor
+description: MCP server for database migration risk analysis — Flyway and Liquibase XML/YAML/SQL support with lock detection and conflict analysis
+version: 0.2.3
+license: MIT
+homepage: https://github.com/Dmitriusan/mcp-migration-advisor
+npm: mcp-migration-advisor
+categories:
+  - developer-tools
+  - databases
+keywords:
+  - migration
+  - database-migration
+  - flyway
+  - liquibase
+  - risk-analysis
+  - schema
+tools:
+  - name: analyze_migration
+    description: Detect lock risks and data loss patterns in a Flyway SQL migration file
+  - name: analyze_liquibase
+    description: Parse and risk-score a Liquibase XML changelog
+  - name: analyze_liquibase_yaml
+    description: Parse and risk-score a Liquibase YAML changelog
+  - name: score_risk
+    description: Return a numeric risk score (0–100) with per-operation breakdown
+  - name: generate_rollback
+    description: Generate reverse DDL rollback script for a migration
+  - name: detect_conflicts
+    description: Detect conflicts between two migration files (ordering, column overlap)
+transport:
+  - stdio
