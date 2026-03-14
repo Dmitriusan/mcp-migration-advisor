@@ -1,6 +1,6 @@
 name: mcp-migration-advisor
-displayName: Migration Advisor
-description: MCP server for database migration risk analysis — Flyway and Liquibase XML/YAML/SQL support with lock detection and conflict analysis
+displayName: Flyway & Liquibase Migration Advisor
+description: Connects Claude Code and Cursor to your Flyway and Liquibase migrations for risk analysis, lock detection, conflict resolution, and rollback generation
 version: 0.2.3
 license: MIT
 homepage: https://github.com/Dmitriusan/mcp-migration-advisor
