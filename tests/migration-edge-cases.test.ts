@@ -107,12 +107,30 @@ CREATE TABLE données (
     expect(result.version).toBe("1.2.3.4.5");
   });
 
-  it("should handle SQL with strings containing semicolons", () => {
-    // Note: current parser doesn't handle string-internal semicolons,
-    // but it should at least not crash
+  it("should not split on semicolons inside single-quoted string literals", () => {
+    // A semicolon inside a quoted string must not be treated as a statement separator
     const result = parseMigration("V1__strings.sql",
       "INSERT INTO config (key, val) VALUES ('delimiter', ';');"
     );
-    expect(result.statements.length).toBeGreaterThanOrEqual(1);
+    expect(result.statements).toHaveLength(1);
+    expect(result.statements[0].raw).toContain("';'");
+  });
+
+  it("should handle escaped single quotes ('') inside string literals", () => {
+    // '' is the SQL standard way to embed a literal single quote in a string
+    const result = parseMigration("V1__escaped_quotes.sql",
+      "INSERT INTO messages (body) VALUES ('It''s a test; really');\nCREATE TABLE log (id SERIAL PRIMARY KEY);"
+    );
+    expect(result.statements).toHaveLength(2);
+    expect(result.statements[0].raw).toContain("It''s a test; really");
+    expect(result.statements[1].type).toBe("CREATE_TABLE");
+  });
+
+  it("should handle multiple string literals with semicolons in one statement", () => {
+    const result = parseMigration("V1__multi_strings.sql",
+      "INSERT INTO t (a, b, c) VALUES ('x;y', 'a;b;c', 'end');\nALTER TABLE t ADD COLUMN flag BOOLEAN;"
+    );
+    expect(result.statements).toHaveLength(2);
+    expect(result.statements[1].type).toBe("ADD_COLUMN");
   });
 });

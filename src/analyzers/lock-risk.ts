@@ -172,6 +172,18 @@ function analyzeStatement(stmt: DDLStatement): LockRisk[] {
     });
   }
 
+  // TRUNCATE acquires ACCESS EXCLUSIVE lock — same severity as DROP TABLE
+  if (stmt.type === "OTHER" && /\bTRUNCATE\b/i.test(stmt.raw)) {
+    const tableMatch = stmt.raw.match(/TRUNCATE\s+(?:TABLE\s+)?(?:`|"|)?(\w+)/i);
+    risks.push({
+      severity: "HIGH",
+      statement: truncate(stmt.raw),
+      tableName: tableMatch?.[1] || null,
+      risk: "TRUNCATE acquires ACCESS EXCLUSIVE lock, blocking all concurrent reads and writes for the duration.",
+      recommendation: "On large tables, prefer DELETE with a WHERE clause in batches. If speed is critical, ensure a maintenance window.",
+    });
+  }
+
   return risks;
 }
 

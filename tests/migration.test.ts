@@ -256,6 +256,22 @@ describe("analyzeLockRisks", () => {
     const risks = analyzeLockRisks(migration);
     expect(risks.some(r => r.severity === "HIGH" && r.risk.includes("SET NOT NULL"))).toBe(true);
   });
+
+  it("flags TRUNCATE as HIGH lock risk", () => {
+    const sql = "TRUNCATE TABLE sessions;";
+    const migration = parseMigration("V1__test.sql", sql);
+    const risks = analyzeLockRisks(migration);
+    expect(risks.some(r => r.severity === "HIGH" && r.risk.includes("TRUNCATE"))).toBe(true);
+  });
+
+  it("flags TRUNCATE TABLE (with TABLE keyword) as HIGH lock risk", () => {
+    const sql = "TRUNCATE TABLE audit_log;";
+    const migration = parseMigration("V1__test.sql", sql);
+    const risks = analyzeLockRisks(migration);
+    const truncateRisk = risks.find(r => r.risk.includes("TRUNCATE"));
+    expect(truncateRisk).toBeDefined();
+    expect(truncateRisk?.tableName).toBe("audit_log");
+  });
 });
 
 // --- Risk score ---

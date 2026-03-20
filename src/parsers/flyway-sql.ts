@@ -59,7 +59,8 @@ export function parseFlywayFilename(filename: string): { version: string | null;
 
 /**
  * Split SQL text into individual statements.
- * Handles semicolons, ignoring those inside strings and comments.
+ * Handles semicolons, ignoring those inside string literals and comments.
+ * Single-quoted strings are tracked; escaped quotes ('') are handled correctly.
  */
 function splitStatements(sql: string): string[] {
   // Remove block comments
@@ -69,16 +70,36 @@ function splitStatements(sql: string): string[] {
 
   const stmts: string[] = [];
   let current = "";
+  let inString = false;
+  let i = 0;
 
-  for (const char of cleaned) {
-    if (char === ";") {
+  while (i < cleaned.length) {
+    const char = cleaned[i];
+
+    if (char === "'" && !inString) {
+      inString = true;
+      current += char;
+      i++;
+    } else if (char === "'" && inString) {
+      current += char;
+      i++;
+      // '' is the SQL escape for a literal single quote inside a string
+      if (i < cleaned.length && cleaned[i] === "'") {
+        current += cleaned[i];
+        i++;
+      } else {
+        inString = false;
+      }
+    } else if (char === ";" && !inString) {
       const trimmed = current.trim();
       if (trimmed.length > 0) {
         stmts.push(trimmed);
       }
       current = "";
+      i++;
     } else {
       current += char;
+      i++;
     }
   }
 
