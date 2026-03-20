@@ -1,6 +1,6 @@
 {
   "name": "mcp-migration-advisor",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "MCP server for database migration risk analysis — Flyway and Liquibase XML/YAML/SQL support with lock detection and conflict analysis",
   "mcpName": "Migration Advisor",
   "main": "build/index.js",
