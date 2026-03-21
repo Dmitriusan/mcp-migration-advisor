@@ -153,6 +153,13 @@ Returns a conflict report with severity levels, affected tables/columns, and whe
 - **No execution**: The advisor analyzes but never executes migrations. All recommendations are advisory.
 - **Database-specific DDL**: Parser targets PostgreSQL/MySQL DDL syntax. Oracle PL/SQL or SQL Server T-SQL may not be fully recognized.
 
+## Part of the MCP Java Backend Suite
+
+- [mcp-db-analyzer](https://www.npmjs.com/package/mcp-db-analyzer) — PostgreSQL/MySQL/SQLite schema analysis
+- [mcp-spring-boot-actuator](https://www.npmjs.com/package/mcp-spring-boot-actuator) — Spring Boot health, metrics, and bean analysis
+- [mcp-jvm-diagnostics](https://www.npmjs.com/package/mcp-jvm-diagnostics) — Thread dump and GC log analysis
+- [mcp-redis-diagnostics](https://www.npmjs.com/package/mcp-redis-diagnostics) — Redis memory, slowlog, and client diagnostics
+
 ## License
 
 MIT

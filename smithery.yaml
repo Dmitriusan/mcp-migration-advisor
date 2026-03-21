@@ -1,7 +1,7 @@
 name: mcp-migration-advisor
 displayName: Flyway & Liquibase Migration Advisor
 description: Connects Claude Code and Cursor to your Flyway and Liquibase migrations for risk analysis, lock detection, conflict resolution, and rollback generation
-version: 0.2.3
+version: 0.2.4
 license: MIT
 homepage: https://github.com/Dmitriusan/mcp-migration-advisor
 npm: mcp-migration-advisor
