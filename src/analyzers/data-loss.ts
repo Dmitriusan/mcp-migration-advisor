@@ -21,17 +21,6 @@ export interface DataLossIssue {
   mitigation: string;
 }
 
-// Types that lose precision when converted
-const NARROWING_CONVERSIONS: Record<string, string[]> = {
-  "BIGINT": ["INTEGER", "SMALLINT", "TINYINT"],
-  "INTEGER": ["SMALLINT", "TINYINT"],
-  "DOUBLE PRECISION": ["REAL", "FLOAT4", "NUMERIC"],
-  "TEXT": ["VARCHAR", "CHAR"],
-  "VARCHAR": ["CHAR"],
-  "TIMESTAMP": ["DATE", "TIME"],
-  "TIMESTAMPTZ": ["DATE", "TIME", "TIMESTAMP"],
-};
-
 /**
  * Analyze a migration for data loss risks.
  */

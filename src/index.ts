@@ -250,29 +250,35 @@ server.tool(
     const highCount = lockRisks.filter(r => r.severity === "HIGH").length;
     const dataLossCertain = dataLossIssues.filter(i => i.risk === "CERTAIN").length;
     const dataLossLikely = dataLossIssues.filter(i => i.risk === "LIKELY").length;
+    const dataLossPossible = dataLossIssues.filter(i => i.risk === "POSSIBLE").length;
+
+    // Combine lock risk score with data loss severity for a complete picture
+    const dataLossScore = Math.min(100, dataLossCertain * 25 + dataLossLikely * 15 + dataLossPossible * 5);
+    const combinedScore = Math.min(100, riskScore + dataLossScore);
 
     let verdict: string;
-    if (riskScore >= 60 || dataLossCertain > 0) {
+    if (combinedScore >= 60 || dataLossCertain > 0) {
       verdict = "HIGH RISK — requires careful review and testing before deployment";
-    } else if (riskScore >= 30 || dataLossLikely > 0) {
+    } else if (combinedScore >= 30 || dataLossLikely > 0) {
       verdict = "MODERATE RISK — review lock duration and test on staging";
     } else {
       verdict = "LOW RISK — standard migration, proceed with normal deployment";
     }
 
-    const output = `## Risk Score: ${riskScore}/100
+    const output = `## Risk Score: ${combinedScore}/100
 
 **Verdict**: ${verdict}
 
 ### Breakdown
 
-| Category | Count |
-|----------|-------|
-| CRITICAL lock risks | ${criticalCount} |
-| HIGH lock risks | ${highCount} |
-| Certain data loss | ${dataLossCertain} |
-| Likely data loss | ${dataLossLikely} |
-| Total statements | ${migration.statements.length} |
+| Category | Count | Score contribution |
+|----------|-------|--------------------|
+| CRITICAL lock risks | ${criticalCount} | ${criticalCount * 30} |
+| HIGH lock risks | ${highCount} | ${highCount * 20} |
+| Certain data loss | ${dataLossCertain} | ${dataLossCertain * 25} |
+| Likely data loss | ${dataLossLikely} | ${dataLossLikely * 15} |
+| Possible data loss | ${dataLossPossible} | ${dataLossPossible * 5} |
+| Total statements | ${migration.statements.length} | — |
 `;
 
     return {

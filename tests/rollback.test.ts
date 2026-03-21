@@ -97,3 +97,45 @@ describe("Rollback Generator", () => {
     expect(report.fullyReversible).toBe(true);
   });
 });
+
+describe("Rollback Generator — RENAME paths", () => {
+  it("reverses RENAME TABLE by swapping old and new names", () => {
+    const migration = parseMigration("V11__rename_table.sql",
+      "ALTER TABLE users RENAME TO legacy_users;"
+    );
+    const report = generateRollback(migration);
+    expect(report.fullyReversible).toBe(true);
+    expect(report.rollbackSql).toContain("legacy_users RENAME TO users");
+  });
+
+  it("reverses RENAME COLUMN by swapping old and new column names", () => {
+    const migration = parseMigration("V12__rename_col.sql",
+      "ALTER TABLE users RENAME COLUMN name TO full_name;"
+    );
+    const report = generateRollback(migration);
+    expect(report.fullyReversible).toBe(true);
+    expect(report.rollbackSql).toContain("RENAME COLUMN full_name TO name");
+  });
+});
+
+describe("Rollback Generator — irreversible DROP paths", () => {
+  it("marks DROP INDEX as irreversible", () => {
+    const migration = parseMigration("V13__drop_idx.sql",
+      "DROP INDEX idx_users_email;"
+    );
+    const report = generateRollback(migration);
+    expect(report.fullyReversible).toBe(false);
+    expect(report.warnings.some(w => w.includes("DROP INDEX"))).toBe(true);
+    expect(report.rollbackSql).toContain("Cannot reverse DROP INDEX");
+  });
+
+  it("marks DROP CONSTRAINT as irreversible", () => {
+    const migration = parseMigration("V14__drop_constraint.sql",
+      "ALTER TABLE orders DROP CONSTRAINT fk_orders_user;"
+    );
+    const report = generateRollback(migration);
+    expect(report.fullyReversible).toBe(false);
+    expect(report.warnings.some(w => w.includes("DROP CONSTRAINT"))).toBe(true);
+    expect(report.rollbackSql).toContain("fk_orders_user");
+  });
+});
