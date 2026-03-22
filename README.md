@@ -22,6 +22,19 @@ Unlike MigrationPilot (PG-only, raw SQL analysis), this tool **parses Liquibase 
 - **Rollback Validation**: Checks rollback completeness for each changeSet
 - **Actionable Recommendations**: Every risk includes a specific safe alternative
 
+## Pro Tier
+
+**Generate exportable diagnostic reports (HTML + PDF)** with a Pro license key.
+
+- Full JVM thread dump analysis report with actionable recommendations
+- PDF export for sharing with your team
+- Priority support
+
+<!-- TODO: replace placeholder Stripe Payment Link once STRIPE_SECRET_KEY is configured -->
+**$9.99/month** — [Get Pro License](https://buy.stripe.com/PLACEHOLDER)
+
+Pro license key activates the `generate_report` MCP tool in mcp-jvm-diagnostics.
+
 ## Installation
 
 ```bash
