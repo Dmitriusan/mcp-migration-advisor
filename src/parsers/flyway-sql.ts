@@ -61,6 +61,8 @@ export function parseFlywayFilename(filename: string): { version: string | null;
  * Split SQL text into individual statements.
  * Handles semicolons, ignoring those inside string literals and comments.
  * Single-quoted strings are tracked; escaped quotes ('') are handled correctly.
+ * PostgreSQL dollar-quoted strings ($$ or $tag$) are also tracked so that
+ * semicolons inside function/trigger bodies are not treated as statement separators.
  */
 function splitStatements(sql: string): string[] {
   // Remove block comments
@@ -71,10 +73,42 @@ function splitStatements(sql: string): string[] {
   const stmts: string[] = [];
   let current = "";
   let inString = false;
+  let dollarTag: string | null = null; // non-null while inside a $tag$...$tag$ block
   let i = 0;
 
   while (i < cleaned.length) {
     const char = cleaned[i];
+
+    // Dollar-quote handling (PostgreSQL $tag$...$tag$ or $$...$$).
+    // Must be checked before the regular single-quote path.
+    if (char === "$" && !inString) {
+      const rest = cleaned.substring(i);
+      if (dollarTag === null) {
+        // Try to open a dollar-quoted block
+        const openMatch = rest.match(/^\$(\w*)\$/);
+        if (openMatch) {
+          dollarTag = openMatch[0]; // e.g. "$$" or "$body$"
+          current += dollarTag;
+          i += dollarTag.length;
+          continue;
+        }
+      } else {
+        // Try to close the current dollar-quoted block
+        if (rest.startsWith(dollarTag)) {
+          current += dollarTag;
+          i += dollarTag.length;
+          dollarTag = null;
+          continue;
+        }
+      }
+    }
+
+    // While inside a dollar-quoted block, pass everything through verbatim
+    if (dollarTag !== null) {
+      current += char;
+      i++;
+      continue;
+    }
 
     if (char === "'" && !inString) {
       inString = true;
@@ -111,11 +145,13 @@ function splitStatements(sql: string): string[] {
   return stmts;
 }
 
-// Pattern matchers for DDL statement types
-const CREATE_TABLE_RE = /CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?(?:`|"|)?(\w+)(?:`|"|)?/i;
-const ALTER_TABLE_RE = /ALTER\s+TABLE\s+(?:ONLY\s+)?(?:`|"|)?(\w+)(?:`|"|)?/i;
-const DROP_TABLE_RE = /DROP\s+TABLE\s+(?:IF\s+EXISTS\s+)?(?:`|"|)?(\w+)(?:`|"|)?/i;
-const CREATE_INDEX_RE = /CREATE\s+(?:UNIQUE\s+)?INDEX\s+(?:CONCURRENTLY\s+)?(?:IF\s+NOT\s+EXISTS\s+)?(?:`|"|)?(\w+)(?:`|"|\s).*?\bON\s+(?:`|"|)?(\w+)(?:`|"|)?/i;
+// Pattern matchers for DDL statement types.
+// Table name patterns use (?:\w+\.)? to optionally consume a schema prefix (e.g. public.users),
+// so that only the unqualified table name is captured in group 1.
+const CREATE_TABLE_RE = /CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?(?:`|"|)?(?:\w+\.)?(\w+)(?:`|"|)?/i;
+const ALTER_TABLE_RE = /ALTER\s+TABLE\s+(?:ONLY\s+)?(?:`|"|)?(?:\w+\.)?(\w+)(?:`|"|)?/i;
+const DROP_TABLE_RE = /DROP\s+TABLE\s+(?:IF\s+EXISTS\s+)?(?:`|"|)?(?:\w+\.)?(\w+)(?:`|"|)?/i;
+const CREATE_INDEX_RE = /CREATE\s+(?:UNIQUE\s+)?INDEX\s+(?:CONCURRENTLY\s+)?(?:IF\s+NOT\s+EXISTS\s+)?(?:`|"|)?(\w+)(?:`|"|\s).*?\bON\s+(?:`|"|)?(?:\w+\.)?(\w+)(?:`|"|)?/i;
 const DROP_INDEX_RE = /DROP\s+INDEX\s+(?:CONCURRENTLY\s+)?(?:IF\s+EXISTS\s+)?(?:`|"|)?(\w+)(?:`|"|)?/i;
 const ADD_COLUMN_RE = /ADD\s+(?:COLUMN\s+)?(?:`|"|)?(\w+)(?:`|"|)?/i;
 const DROP_COLUMN_RE = /DROP\s+(?:COLUMN\s+)?(?:IF\s+EXISTS\s+)?(?:`|"|)?(\w+)(?:`|"|)?/i;

@@ -97,7 +97,7 @@ export function analyzeDataLoss(migration: ParsedMigration): DataLossIssue[] {
       case "OTHER": {
         // Detect TRUNCATE
         if (upper.includes("TRUNCATE")) {
-          const tableMatch = stmt.raw.match(/TRUNCATE\s+(?:TABLE\s+)?(?:`|"|)?(\w+)/i);
+          const tableMatch = stmt.raw.match(/TRUNCATE\s+(?:TABLE\s+)?(?:`|"|)?(?:\w+\.)?(\w+)/i);
           issues.push({
             risk: "CERTAIN",
             statement: truncate(stmt.raw),
@@ -109,7 +109,7 @@ export function analyzeDataLoss(migration: ParsedMigration): DataLossIssue[] {
 
         // Detect DELETE without WHERE
         if (upper.match(/DELETE\s+FROM/) && !upper.includes("WHERE")) {
-          const tableMatch = stmt.raw.match(/DELETE\s+FROM\s+(?:`|"|)?(\w+)/i);
+          const tableMatch = stmt.raw.match(/DELETE\s+FROM\s+(?:`|"|)?(?:\w+\.)?(\w+)/i);
           issues.push({
             risk: "CERTAIN",
             statement: truncate(stmt.raw),
@@ -121,7 +121,7 @@ export function analyzeDataLoss(migration: ParsedMigration): DataLossIssue[] {
 
         // Detect UPDATE without WHERE
         if (upper.match(/^UPDATE\b/) && !upper.includes("WHERE")) {
-          const tableMatch = stmt.raw.match(/UPDATE\s+(?:`|"|)?(\w+)/i);
+          const tableMatch = stmt.raw.match(/UPDATE\s+(?:`|"|)?(?:\w+\.)?(\w+)/i);
           issues.push({
             risk: "LIKELY",
             statement: truncate(stmt.raw),

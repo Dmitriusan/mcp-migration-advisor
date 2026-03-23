@@ -174,7 +174,7 @@ function analyzeStatement(stmt: DDLStatement): LockRisk[] {
 
   // TRUNCATE acquires ACCESS EXCLUSIVE lock — same severity as DROP TABLE
   if (stmt.type === "OTHER" && /\bTRUNCATE\b/i.test(stmt.raw)) {
-    const tableMatch = stmt.raw.match(/TRUNCATE\s+(?:TABLE\s+)?(?:`|"|)?(\w+)/i);
+    const tableMatch = stmt.raw.match(/TRUNCATE\s+(?:TABLE\s+)?(?:`|"|)?(?:\w+\.)?(\w+)/i);
     risks.push({
       severity: "HIGH",
       statement: truncate(stmt.raw),
