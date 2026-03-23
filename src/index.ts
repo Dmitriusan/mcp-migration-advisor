@@ -235,7 +235,7 @@ server.tool(
 // Tool 4: score_risk
 server.tool(
   "score_risk",
-  "Calculate the overall risk score (0-100) for a SQL migration. Higher scores indicate more dangerous migrations.",
+  "Calculate the combined risk score (0-100) for a SQL migration. Aggregates both lock risk severity (ACCESS EXCLUSIVE, SHARE locks) and data loss potential (DROP, TRUNCATE, type changes) into a single score. Useful for CI gates and automated migration review pipelines.",
   {
     filename: z.string().describe("Migration filename"),
     sql: z.string().describe("The SQL content of the migration file"),
@@ -287,7 +287,7 @@ server.tool(
   }
 );
 
-// Tool 4: generate_rollback
+// Tool 5: generate_rollback
 server.tool(
   "generate_rollback",
   "Generate reverse DDL to undo a SQL migration. Produces rollback SQL with warnings for irreversible operations (DROP TABLE, DROP COLUMN, type changes). Includes Flyway schema_history cleanup.",
