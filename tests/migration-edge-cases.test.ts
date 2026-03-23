@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { parseMigration } from "../src/parsers/flyway-sql.js";
+import { detectConflicts } from "../src/analyzers/conflicts.js";
 
 describe("Migration parser — edge case inputs", () => {
   it("should handle empty SQL content", () => {
@@ -132,5 +133,112 @@ CREATE TABLE données (
     );
     expect(result.statements).toHaveLength(2);
     expect(result.statements[1].type).toBe("ADD_COLUMN");
+  });
+});
+
+// --- Dollar-quoted string handling (PostgreSQL $$ function/trigger bodies) ---
+
+describe("Migration parser — dollar-quoted strings", () => {
+  it("should not split on semicolons inside a $$ body", () => {
+    const sql = `
+CREATE OR REPLACE FUNCTION set_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+ALTER TABLE users ADD COLUMN updated_at TIMESTAMPTZ DEFAULT NOW();
+`;
+    const result = parseMigration("V20__trigger_fn.sql", sql);
+    // Two statements: the CREATE FUNCTION and the ALTER TABLE
+    expect(result.statements).toHaveLength(2);
+    expect(result.statements[0].raw).toContain("CREATE OR REPLACE FUNCTION");
+    expect(result.statements[1].type).toBe("ADD_COLUMN");
+  });
+
+  it("should handle named dollar-quote tags ($body$)", () => {
+    const sql = `
+CREATE OR REPLACE FUNCTION check_status()
+RETURNS TRIGGER AS $body$
+BEGIN
+  IF NEW.status NOT IN ('active', 'inactive') THEN
+    RAISE EXCEPTION 'invalid status; must be active or inactive';
+  END IF;
+  RETURN NEW;
+END;
+$body$ LANGUAGE plpgsql;
+`;
+    const result = parseMigration("V21__status_check.sql", sql);
+    // Single statement — body semicolons must not split it
+    expect(result.statements).toHaveLength(1);
+    expect(result.statements[0].raw).toContain("$body$");
+  });
+
+  it("should handle $$ body followed by additional DDL", () => {
+    const sql = `
+CREATE FUNCTION noop() RETURNS void AS $$
+BEGIN
+  NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE INDEX idx_users_email ON users(email);
+DROP TABLE IF EXISTS tmp_scratch;
+`;
+    const result = parseMigration("V22__multi_after_fn.sql", sql);
+    expect(result.statements).toHaveLength(3);
+    expect(result.statements[1].type).toBe("CREATE_INDEX");
+    expect(result.statements[2].type).toBe("DROP_TABLE");
+  });
+});
+
+// --- Schema-qualified table names (public.users, myschema.orders, etc.) ---
+
+describe("Migration parser — schema-qualified table names", () => {
+  it("extracts table name from schema.table in CREATE TABLE", () => {
+    const result = parseMigration("V30__schema_create.sql",
+      "CREATE TABLE public.users (id SERIAL PRIMARY KEY, email TEXT);"
+    );
+    expect(result.statements[0].type).toBe("CREATE_TABLE");
+    expect(result.statements[0].tableName).toBe("users");
+  });
+
+  it("extracts table name from schema.table in ALTER TABLE", () => {
+    const result = parseMigration("V31__schema_alter.sql",
+      "ALTER TABLE public.users ADD COLUMN phone VARCHAR(20);"
+    );
+    expect(result.statements[0].type).toBe("ADD_COLUMN");
+    expect(result.statements[0].tableName).toBe("users");
+  });
+
+  it("extracts table name from schema.table in DROP TABLE", () => {
+    const result = parseMigration("V32__schema_drop.sql",
+      "DROP TABLE IF EXISTS myschema.old_records CASCADE;"
+    );
+    expect(result.statements[0].type).toBe("DROP_TABLE");
+    expect(result.statements[0].tableName).toBe("old_records");
+  });
+
+  it("extracts table name from schema.table in CREATE INDEX ON", () => {
+    const result = parseMigration("V33__schema_index.sql",
+      "CREATE INDEX CONCURRENTLY idx_users_email ON public.users(email);"
+    );
+    expect(result.statements[0].type).toBe("CREATE_INDEX");
+    expect(result.statements[0].tableName).toBe("users");
+  });
+
+  it("conflict detection uses unqualified name so schema.users vs users match", () => {
+    const migA = parseMigration("V40__a.sql",
+      "ALTER TABLE public.users ADD COLUMN phone VARCHAR(20);"
+    );
+    const migB = parseMigration("V41__b.sql",
+      "ALTER TABLE public.users ALTER COLUMN phone TYPE TEXT;"
+    );
+    const report = detectConflicts(migA, migB);
+    // Both modify the same column on the same table — should flag SAME_COLUMN
+    expect(report.conflicts.length).toBeGreaterThan(0);
+    expect(report.conflicts[0].table).toBe("users");
   });
 });
