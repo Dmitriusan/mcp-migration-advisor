@@ -248,6 +248,8 @@ server.tool(
 
     const criticalCount = lockRisks.filter(r => r.severity === "CRITICAL").length;
     const highCount = lockRisks.filter(r => r.severity === "HIGH").length;
+    const mediumCount = lockRisks.filter(r => r.severity === "MEDIUM").length;
+    const lowCount = lockRisks.filter(r => r.severity === "LOW").length;
     const dataLossCertain = dataLossIssues.filter(i => i.risk === "CERTAIN").length;
     const dataLossLikely = dataLossIssues.filter(i => i.risk === "LIKELY").length;
     const dataLossPossible = dataLossIssues.filter(i => i.risk === "POSSIBLE").length;
@@ -275,6 +277,8 @@ server.tool(
 |----------|-------|--------------------|
 | CRITICAL lock risks | ${criticalCount} | ${criticalCount * 30} |
 | HIGH lock risks | ${highCount} | ${highCount * 20} |
+| MEDIUM lock risks | ${mediumCount} | ${mediumCount * 10} |
+| LOW lock risks | ${lowCount} | ${lowCount * 5} |
 | Certain data loss | ${dataLossCertain} | ${dataLossCertain * 25} |
 | Likely data loss | ${dataLossLikely} | ${dataLossLikely * 15} |
 | Possible data loss | ${dataLossPossible} | ${dataLossPossible * 5} |
