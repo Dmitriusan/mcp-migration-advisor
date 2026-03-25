@@ -163,6 +163,22 @@ function generateRollbackStatement(stmt: DDLStatement): RollbackStatement {
           warning: `Type change on ${stmt.tableName}.${stmt.columnName} requires knowing the original type. Check schema before migration.`,
         };
       }
+      if (stmt.details.setDefault === "true") {
+        return {
+          forward: stmt.raw,
+          rollback: `ALTER TABLE ${stmt.tableName} ALTER COLUMN ${stmt.columnName} DROP DEFAULT`,
+          isReversible: true,
+          warning: null,
+        };
+      }
+      if (stmt.details.dropDefault === "true") {
+        return {
+          forward: stmt.raw,
+          rollback: `-- Cannot reverse DROP DEFAULT on ${stmt.tableName}.${stmt.columnName} — original default value unknown`,
+          isReversible: false,
+          warning: `DROP DEFAULT on ${stmt.tableName}.${stmt.columnName} requires knowing the original default value to reverse.`,
+        };
+      }
       return {
         forward: stmt.raw,
         rollback: `-- Cannot reverse: ${stmt.raw.slice(0, 80)}`,

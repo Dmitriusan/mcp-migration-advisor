@@ -67,6 +67,20 @@ describe("Rollback Generator", () => {
     expect(report.warnings.some(w => w.includes("original type"))).toBe(true);
   });
 
+  it("reverses SET DEFAULT to DROP DEFAULT", () => {
+    const migration = parseMigration("V9b__set_default.sql", "ALTER TABLE users ALTER COLUMN status SET DEFAULT 'active';");
+    const report = generateRollback(migration);
+    expect(report.fullyReversible).toBe(true);
+    expect(report.rollbackSql).toContain("DROP DEFAULT");
+  });
+
+  it("marks DROP DEFAULT as irreversible (original value unknown)", () => {
+    const migration = parseMigration("V9c__drop_default.sql", "ALTER TABLE users ALTER COLUMN status DROP DEFAULT;");
+    const report = generateRollback(migration);
+    expect(report.fullyReversible).toBe(false);
+    expect(report.warnings.some(w => w.includes("original default"))).toBe(true);
+  });
+
   it("handles multi-statement migration in reverse order", () => {
     const sql = `
       CREATE TABLE orders (id SERIAL PRIMARY KEY, user_id INT);
