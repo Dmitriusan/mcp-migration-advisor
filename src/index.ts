@@ -37,7 +37,7 @@ function formatParserWarnings(migration: ParsedMigration): string {
 
 // Handle --help
 if (process.argv.includes("--help") || process.argv.includes("-h")) {
-  console.log(`mcp-migration-advisor v0.2.6 — MCP server for database migration risk analysis
+  console.log(`mcp-migration-advisor v0.2.7 — MCP server for database migration risk analysis
 
 Usage:
   mcp-migration-advisor [options]
@@ -57,7 +57,7 @@ Tools provided:
 
 const server = new McpServer({
   name: "mcp-migration-advisor",
-  version: "0.2.6",
+  version: "0.2.7",
 });
 
 // Tool 1: analyze_migration
@@ -131,7 +131,7 @@ server.tool(
 // Tool 2: analyze_liquibase
 server.tool(
   "analyze_liquibase",
-  "Analyze a Liquibase XML changelog for lock risks, data loss potential, and unsafe patterns.",
+  "Analyze a Liquibase XML changelog for lock risks, data loss potential, and unsafe patterns. Supports createTable, dropTable, addColumn, dropColumn, modifyDataType, createIndex, addForeignKeyConstraint, renameTable, renameColumn, and more.",
   {
     xml: z.string().describe("The Liquibase XML changelog content"),
   },
