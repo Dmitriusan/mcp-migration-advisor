@@ -233,4 +233,52 @@ ALTER TABLE orders ADD CONSTRAINT fk_orders_user FOREIGN KEY (user_id) REFERENCE
     expect(rollback.statements[0].rollback).toContain("DROP CONSTRAINT");
     expect(rollback.statements[rollback.statements.length - 1].rollback).toContain("RENAME TO customer");
   });
+
+  it("does not flag TRUNCATE/DELETE inside CREATE FUNCTION body as data loss", () => {
+    // A stored function that contains TRUNCATE or DELETE is only risky when invoked,
+    // not when the migration that creates it is applied. We must not fire data-loss
+    // warnings just because the function body text contains these keywords.
+    const sql = `
+CREATE OR REPLACE FUNCTION purge_old_records() RETURNS void AS $$
+BEGIN
+  DELETE FROM audit_log WHERE created_at < NOW() - INTERVAL '90 days';
+  TRUNCATE TABLE staging_import;
+END;
+$$ LANGUAGE plpgsql;
+
+ALTER TABLE users ADD COLUMN last_purge_at TIMESTAMPTZ;
+    `;
+
+    const migration = parseMigration("V20__add_purge_function.sql", sql);
+    const dataLossIssues = analyzeDataLoss(migration);
+
+    // The CREATE FUNCTION should produce no data-loss issues — it does not
+    // execute the DELETE or TRUNCATE at migration time.
+    const functionBodyIssues = dataLossIssues.filter(i =>
+      i.description.toLowerCase().includes("audit_log") ||
+      i.description.toLowerCase().includes("staging_import") ||
+      i.description.toLowerCase().includes("truncate")
+    );
+    expect(functionBodyIssues).toHaveLength(0);
+
+    // The ADD COLUMN statement has no data-loss risk either
+    expect(dataLossIssues).toHaveLength(0);
+  });
+
+  it("still flags standalone TRUNCATE at migration top level", () => {
+    const sql = `
+ALTER TABLE users ADD COLUMN status VARCHAR(20) DEFAULT 'active';
+TRUNCATE TABLE migration_temp;
+    `;
+
+    const migration = parseMigration("V21__add_status_and_cleanup.sql", sql);
+    const dataLossIssues = analyzeDataLoss(migration);
+
+    const truncateIssue = dataLossIssues.find(i =>
+      i.description.toLowerCase().includes("truncate") ||
+      i.tableName === "migration_temp"
+    );
+    expect(truncateIssue).toBeDefined();
+    expect(truncateIssue!.risk).toBe("CERTAIN");
+  });
 });

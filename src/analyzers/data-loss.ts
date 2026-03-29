@@ -95,6 +95,11 @@ export function analyzeDataLoss(migration: ParsedMigration): DataLossIssue[] {
       }
 
       case "OTHER": {
+        // CREATE FUNCTION/PROCEDURE/TRIGGER bodies may contain TRUNCATE/DELETE/UPDATE
+        // statements that only execute when the function is invoked — not at migration time.
+        // Skip data manipulation checks for CREATE statements to avoid false positives.
+        if (/^CREATE\b/i.test(stmt.raw.trim())) break;
+
         // Detect TRUNCATE
         if (upper.includes("TRUNCATE")) {
           const tableMatch = stmt.raw.match(/TRUNCATE\s+(?:TABLE\s+)?(?:`|"|)?(?:\w+\.)?(\w+)/i);
