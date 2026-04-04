@@ -348,6 +348,39 @@ describe("analyzeDataLoss", () => {
     expect(issues.some(i => i.risk === "POSSIBLE")).toBe(true);
   });
 
+  it("flags ADD COLUMN NOT NULL without DEFAULT as POSSIBLE data loss", () => {
+    const sql = "ALTER TABLE users ADD COLUMN score INTEGER NOT NULL;";
+    const migration = parseMigration("V1__test.sql", sql);
+    const issues = analyzeDataLoss(migration);
+    const possible = issues.find(i => i.risk === "POSSIBLE" && i.description.includes("NOT NULL"));
+    expect(possible).toBeDefined();
+    expect(possible?.tableName).toBe("users");
+    expect(possible?.mitigation).toContain("DEFAULT");
+  });
+
+  it("does not flag ADD COLUMN NOT NULL WITH DEFAULT as data loss", () => {
+    const sql = "ALTER TABLE users ADD COLUMN score INTEGER NOT NULL DEFAULT 0;";
+    const migration = parseMigration("V1__test.sql", sql);
+    const issues = analyzeDataLoss(migration);
+    expect(issues.some(i => i.risk === "POSSIBLE" && i.description.includes("NOT NULL"))).toBe(false);
+  });
+
+  it("flags UPDATE without WHERE as LIKELY data loss", () => {
+    const sql = "UPDATE users SET status = 'archived';";
+    const migration = parseMigration("V1__test.sql", sql);
+    const issues = analyzeDataLoss(migration);
+    const likely = issues.find(i => i.risk === "LIKELY" && i.description.includes("UPDATE"));
+    expect(likely).toBeDefined();
+    expect(likely?.mitigation).toContain("WHERE");
+  });
+
+  it("does not flag DELETE with WHERE clause as data loss", () => {
+    const sql = "DELETE FROM sessions WHERE expires_at < NOW();";
+    const migration = parseMigration("V1__test.sql", sql);
+    const issues = analyzeDataLoss(migration);
+    expect(issues.some(i => i.description.includes("DELETE"))).toBe(false);
+  });
+
   it("returns no issues for safe CREATE TABLE", () => {
     const sql = "CREATE TABLE test (id SERIAL PRIMARY KEY, name TEXT);";
     const migration = parseMigration("V1__test.sql", sql);

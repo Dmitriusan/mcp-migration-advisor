@@ -39,6 +39,15 @@ describe("Rollback Generator", () => {
     expect(report.warnings.some(w => w.includes("irreversible"))).toBe(true);
   });
 
+  it("mentions dependent objects in DROP TABLE CASCADE rollback warning", () => {
+    const migration = parseMigration("V5b__drop_cascade.sql", "DROP TABLE users CASCADE;");
+    const report = generateRollback(migration);
+    expect(report.fullyReversible).toBe(false);
+    const warning = report.warnings.find(w => w.includes("CASCADE"));
+    expect(warning).toBeDefined();
+    expect(warning).toContain("dependent objects");
+  });
+
   it("marks DROP COLUMN as irreversible", () => {
     const migration = parseMigration("V6__drop_col.sql", "ALTER TABLE users DROP COLUMN legacy_field;");
     const report = generateRollback(migration);
