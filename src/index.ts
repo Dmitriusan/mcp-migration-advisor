@@ -72,7 +72,14 @@ server.tool(
     const migration = parseMigration(filename, sql);
     const lockRisks = analyzeLockRisks(migration);
     const dataLossIssues = analyzeDataLoss(migration);
-    const riskScore = calculateRiskScore(lockRisks);
+    const lockScore = calculateRiskScore(lockRisks);
+    const dataLossScore = Math.min(
+      100,
+      dataLossIssues.filter(i => i.risk === "CERTAIN").length * 25 +
+      dataLossIssues.filter(i => i.risk === "LIKELY").length * 15 +
+      dataLossIssues.filter(i => i.risk === "POSSIBLE").length * 5,
+    );
+    const riskScore = Math.min(100, lockScore + dataLossScore);
 
     let output = `## Migration Analysis: ${filename}\n\n`;
 
