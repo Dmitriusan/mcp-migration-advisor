@@ -92,13 +92,17 @@ function generateRollbackStatement(stmt: DDLStatement): RollbackStatement {
         warning: null,
       };
 
-    case "DROP_TABLE":
+    case "DROP_TABLE": {
+      const hasCascade = stmt.details.cascade === "true";
       return {
         forward: stmt.raw,
         rollback: `-- Cannot reverse DROP TABLE ${stmt.tableName} without schema backup`,
         isReversible: false,
-        warning: `DROP TABLE ${stmt.tableName} is irreversible — table structure and data are lost. Restore from backup.`,
+        warning: hasCascade
+          ? `DROP TABLE ${stmt.tableName} CASCADE is irreversible — table and all dependent objects (views, foreign keys, indexes) are permanently destroyed. Each dependent object must be recreated manually.`
+          : `DROP TABLE ${stmt.tableName} is irreversible — table structure and data are lost. Restore from backup.`,
       };
+    }
 
     case "CREATE_INDEX": {
       // Extract index name from the raw SQL
