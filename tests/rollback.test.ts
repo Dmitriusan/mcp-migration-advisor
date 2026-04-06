@@ -141,6 +141,26 @@ describe("Rollback Generator — RENAME paths", () => {
   });
 });
 
+describe("Rollback Generator — repeatable migrations", () => {
+  it("does not include flyway_schema_history cleanup for R__ migrations", () => {
+    const migration = parseMigration("R__create_reporting_view.sql",
+      "CREATE OR REPLACE VIEW reporting_summary AS SELECT id, status FROM orders;"
+    );
+    const report = generateRollback(migration);
+    // Repeatable migrations have no version — no DELETE from schema_history should be emitted
+    expect(report.rollbackSql).not.toContain("flyway_schema_history");
+  });
+
+  it("still generates rollback SQL for R__ migration statements", () => {
+    const migration = parseMigration("R__init_lookup_table.sql",
+      "CREATE TABLE lookup_status (code VARCHAR(20) PRIMARY KEY, label VARCHAR(100));"
+    );
+    const report = generateRollback(migration);
+    expect(report.fullyReversible).toBe(true);
+    expect(report.rollbackSql).toContain("DROP TABLE IF EXISTS lookup_status");
+  });
+});
+
 describe("Rollback Generator — irreversible DROP paths", () => {
   it("marks DROP INDEX as irreversible", () => {
     const migration = parseMigration("V13__drop_idx.sql",
