@@ -37,7 +37,7 @@ function formatParserWarnings(migration: ParsedMigration): string {
 
 // Handle --help
 if (process.argv.includes("--help") || process.argv.includes("-h")) {
-  console.log(`mcp-migration-advisor v0.2.9 — MCP server for database migration risk analysis
+  console.log(`mcp-migration-advisor v0.2.10 — MCP server for database migration risk analysis
 
 Usage:
   mcp-migration-advisor [options]
@@ -57,7 +57,7 @@ Tools provided:
 
 const server = new McpServer({
   name: "mcp-migration-advisor",
-  version: "0.2.9",
+  version: "0.2.10",
 });
 
 // Tool 1: analyze_migration
@@ -69,69 +69,78 @@ server.tool(
     sql: z.string().describe("The SQL content of the migration file"),
   },
   async ({ filename, sql }) => {
-    const migration = parseMigration(filename, sql);
-    const lockRisks = analyzeLockRisks(migration);
-    const dataLossIssues = analyzeDataLoss(migration);
-    const lockScore = calculateRiskScore(lockRisks);
-    const dataLossScore = Math.min(
-      100,
-      dataLossIssues.filter(i => i.risk === "CERTAIN").length * 25 +
-      dataLossIssues.filter(i => i.risk === "LIKELY").length * 15 +
-      dataLossIssues.filter(i => i.risk === "POSSIBLE").length * 5,
-    );
-    const riskScore = Math.min(100, lockScore + dataLossScore);
+    try {
+      const migration = parseMigration(filename, sql);
+      const lockRisks = analyzeLockRisks(migration);
+      const dataLossIssues = analyzeDataLoss(migration);
+      const lockScore = calculateRiskScore(lockRisks);
+      const dataLossScore = Math.min(
+        100,
+        dataLossIssues.filter(i => i.risk === "CERTAIN").length * 25 +
+        dataLossIssues.filter(i => i.risk === "LIKELY").length * 15 +
+        dataLossIssues.filter(i => i.risk === "POSSIBLE").length * 5,
+      );
+      const riskScore = Math.min(100, lockScore + dataLossScore);
 
-    let output = `## Migration Analysis: ${filename}\n\n`;
+      let output = `## Migration Analysis: ${filename}\n\n`;
 
-    // Migration info
-    if (migration.version) {
-      output += `**Version**: ${migration.version}\n`;
-    }
-    output += `**Description**: ${migration.description}\n`;
-    output += `**Statements**: ${migration.statements.length}\n`;
-    output += `**Risk Score**: ${riskScore}/100${riskScore >= 60 ? " ⚠️ HIGH RISK" : riskScore >= 30 ? " ⚡ MODERATE RISK" : " ✅ LOW RISK"}\n\n`;
-
-    // Statement summary
-    output += "### Operations\n\n";
-    const typeCounts: Record<string, number> = {};
-    for (const stmt of migration.statements) {
-      typeCounts[stmt.type] = (typeCounts[stmt.type] || 0) + 1;
-    }
-    output += "| Operation | Count |\n|-----------|-------|\n";
-    for (const [type, count] of Object.entries(typeCounts)) {
-      output += `| ${type} | ${count} |\n`;
-    }
-    output += "\n";
-
-    // Lock risks
-    if (lockRisks.length > 0) {
-      output += "### Lock Risks\n\n";
-      for (const risk of lockRisks) {
-        output += `**${risk.severity}**: ${risk.risk}\n`;
-        output += `> \`${risk.statement}\`\n`;
-        output += `> **Recommendation**: ${risk.recommendation}\n\n`;
+      // Migration info
+      if (migration.version) {
+        output += `**Version**: ${migration.version}\n`;
       }
-    } else {
-      output += "### Lock Risks\n\nNo lock risks detected.\n\n";
-    }
+      output += `**Description**: ${migration.description}\n`;
+      output += `**Statements**: ${migration.statements.length}\n`;
+      output += `**Risk Score**: ${riskScore}/100${riskScore >= 60 ? " ⚠️ HIGH RISK" : riskScore >= 30 ? " ⚡ MODERATE RISK" : " ✅ LOW RISK"}\n\n`;
 
-    // Data loss issues
-    if (dataLossIssues.length > 0) {
-      output += "### Data Loss Analysis\n\n";
-      for (const issue of dataLossIssues) {
-        output += `**${issue.risk}**: ${issue.description}\n`;
-        output += `> \`${issue.statement}\`\n`;
-        output += `> **Mitigation**: ${issue.mitigation}\n\n`;
+      // Statement summary
+      output += "### Operations\n\n";
+      const typeCounts: Record<string, number> = {};
+      for (const stmt of migration.statements) {
+        typeCounts[stmt.type] = (typeCounts[stmt.type] || 0) + 1;
       }
-    } else {
-      output += "### Data Loss Analysis\n\nNo data loss risks detected.\n\n";
+      output += "| Operation | Count |\n|-----------|-------|\n";
+      for (const [type, count] of Object.entries(typeCounts)) {
+        output += `| ${type} | ${count} |\n`;
+      }
+      output += "\n";
+
+      // Lock risks
+      if (lockRisks.length > 0) {
+        output += "### Lock Risks\n\n";
+        for (const risk of lockRisks) {
+          output += `**${risk.severity}**: ${risk.risk}\n`;
+          output += `> \`${risk.statement}\`\n`;
+          output += `> **Recommendation**: ${risk.recommendation}\n\n`;
+        }
+      } else {
+        output += "### Lock Risks\n\nNo lock risks detected.\n\n";
+      }
+
+      // Data loss issues
+      if (dataLossIssues.length > 0) {
+        output += "### Data Loss Analysis\n\n";
+        for (const issue of dataLossIssues) {
+          output += `**${issue.risk}**: ${issue.description}\n`;
+          output += `> \`${issue.statement}\`\n`;
+          output += `> **Mitigation**: ${issue.mitigation}\n\n`;
+        }
+      } else {
+        output += "### Data Loss Analysis\n\nNo data loss risks detected.\n\n";
+      }
+
+      output += formatParserWarnings(migration);
+
+      return {
+        content: [{ type: "text" as const, text: output }],
+      };
+    } catch (err) {
+      return {
+        content: [{
+          type: "text" as const,
+          text: `Error analyzing migration: ${err instanceof Error ? err.message : String(err)}`,
+        }],
+      };
     }
-
-    output += formatParserWarnings(migration);
-
-    return {
-      content: [{ type: "text" as const, text: output }],
-    };
   }
 );
 
@@ -143,47 +152,63 @@ server.tool(
     xml: z.string().describe("The Liquibase XML changelog content"),
   },
   async ({ xml }) => {
-    const migration = parseLiquibaseXml(xml);
-    const lockRisks = analyzeLockRisks(migration);
-    const dataLossIssues = analyzeDataLoss(migration);
-    const riskScore = calculateRiskScore(lockRisks);
+    try {
+      const migration = parseLiquibaseXml(xml);
+      const lockRisks = analyzeLockRisks(migration);
+      const dataLossIssues = analyzeDataLoss(migration);
+      const lockScore = calculateRiskScore(lockRisks);
+      const dataLossScore = Math.min(
+        100,
+        dataLossIssues.filter(i => i.risk === "CERTAIN").length * 25 +
+        dataLossIssues.filter(i => i.risk === "LIKELY").length * 15 +
+        dataLossIssues.filter(i => i.risk === "POSSIBLE").length * 5,
+      );
+      const riskScore = Math.min(100, lockScore + dataLossScore);
 
-    let output = `## Liquibase Changelog Analysis\n\n`;
-    output += `**ChangeSets**: ${migration.description}\n`;
-    output += `**Statements**: ${migration.statements.length}\n`;
-    output += `**Risk Score**: ${riskScore}/100${riskScore >= 60 ? " HIGH RISK" : riskScore >= 30 ? " MODERATE RISK" : " LOW RISK"}\n\n`;
+      let output = `## Liquibase Changelog Analysis\n\n`;
+      output += `**ChangeSets**: ${migration.description}\n`;
+      output += `**Statements**: ${migration.statements.length}\n`;
+      output += `**Risk Score**: ${riskScore}/100${riskScore >= 60 ? " HIGH RISK" : riskScore >= 30 ? " MODERATE RISK" : " LOW RISK"}\n\n`;
 
-    const typeCounts: Record<string, number> = {};
-    for (const stmt of migration.statements) {
-      typeCounts[stmt.type] = (typeCounts[stmt.type] || 0) + 1;
-    }
-    output += "### Operations\n\n| Operation | Count |\n|-----------|-------|\n";
-    for (const [type, count] of Object.entries(typeCounts)) {
-      output += `| ${type} | ${count} |\n`;
-    }
-    output += "\n";
-
-    if (lockRisks.length > 0) {
-      output += "### Lock Risks\n\n";
-      for (const risk of lockRisks) {
-        output += `**${risk.severity}**: ${risk.risk}\n> **Recommendation**: ${risk.recommendation}\n\n`;
+      const typeCounts: Record<string, number> = {};
+      for (const stmt of migration.statements) {
+        typeCounts[stmt.type] = (typeCounts[stmt.type] || 0) + 1;
       }
-    }
-
-    if (dataLossIssues.length > 0) {
-      output += "### Data Loss Analysis\n\n";
-      for (const issue of dataLossIssues) {
-        output += `**${issue.risk}**: ${issue.description}\n> **Mitigation**: ${issue.mitigation}\n\n`;
+      output += "### Operations\n\n| Operation | Count |\n|-----------|-------|\n";
+      for (const [type, count] of Object.entries(typeCounts)) {
+        output += `| ${type} | ${count} |\n`;
       }
+      output += "\n";
+
+      if (lockRisks.length > 0) {
+        output += "### Lock Risks\n\n";
+        for (const risk of lockRisks) {
+          output += `**${risk.severity}**: ${risk.risk}\n> **Recommendation**: ${risk.recommendation}\n\n`;
+        }
+      }
+
+      if (dataLossIssues.length > 0) {
+        output += "### Data Loss Analysis\n\n";
+        for (const issue of dataLossIssues) {
+          output += `**${issue.risk}**: ${issue.description}\n> **Mitigation**: ${issue.mitigation}\n\n`;
+        }
+      }
+
+      if (lockRisks.length === 0 && dataLossIssues.length === 0) {
+        output += "### No risks detected.\n";
+      }
+
+      output += formatParserWarnings(migration);
+
+      return { content: [{ type: "text" as const, text: output }] };
+    } catch (err) {
+      return {
+        content: [{
+          type: "text" as const,
+          text: `Error analyzing Liquibase changelog: ${err instanceof Error ? err.message : String(err)}`,
+        }],
+      };
     }
-
-    if (lockRisks.length === 0 && dataLossIssues.length === 0) {
-      output += "### No risks detected.\n";
-    }
-
-    output += formatParserWarnings(migration);
-
-    return { content: [{ type: "text" as const, text: output }] };
   }
 );
 
@@ -195,47 +220,63 @@ server.tool(
     yaml: z.string().describe("The Liquibase YAML changelog content"),
   },
   async ({ yaml }) => {
-    const migration = parseLiquibaseYaml(yaml);
-    const lockRisks = analyzeLockRisks(migration);
-    const dataLossIssues = analyzeDataLoss(migration);
-    const riskScore = calculateRiskScore(lockRisks);
+    try {
+      const migration = parseLiquibaseYaml(yaml);
+      const lockRisks = analyzeLockRisks(migration);
+      const dataLossIssues = analyzeDataLoss(migration);
+      const lockScore = calculateRiskScore(lockRisks);
+      const dataLossScore = Math.min(
+        100,
+        dataLossIssues.filter(i => i.risk === "CERTAIN").length * 25 +
+        dataLossIssues.filter(i => i.risk === "LIKELY").length * 15 +
+        dataLossIssues.filter(i => i.risk === "POSSIBLE").length * 5,
+      );
+      const riskScore = Math.min(100, lockScore + dataLossScore);
 
-    let output = `## Liquibase YAML Changelog Analysis\n\n`;
-    output += `**ChangeSets**: ${migration.description}\n`;
-    output += `**Statements**: ${migration.statements.length}\n`;
-    output += `**Risk Score**: ${riskScore}/100${riskScore >= 60 ? " HIGH RISK" : riskScore >= 30 ? " MODERATE RISK" : " LOW RISK"}\n\n`;
+      let output = `## Liquibase YAML Changelog Analysis\n\n`;
+      output += `**ChangeSets**: ${migration.description}\n`;
+      output += `**Statements**: ${migration.statements.length}\n`;
+      output += `**Risk Score**: ${riskScore}/100${riskScore >= 60 ? " HIGH RISK" : riskScore >= 30 ? " MODERATE RISK" : " LOW RISK"}\n\n`;
 
-    const typeCounts: Record<string, number> = {};
-    for (const stmt of migration.statements) {
-      typeCounts[stmt.type] = (typeCounts[stmt.type] || 0) + 1;
-    }
-    output += "### Operations\n\n| Operation | Count |\n|-----------|-------|\n";
-    for (const [type, count] of Object.entries(typeCounts)) {
-      output += `| ${type} | ${count} |\n`;
-    }
-    output += "\n";
-
-    if (lockRisks.length > 0) {
-      output += "### Lock Risks\n\n";
-      for (const risk of lockRisks) {
-        output += `**${risk.severity}**: ${risk.risk}\n> **Recommendation**: ${risk.recommendation}\n\n`;
+      const typeCounts: Record<string, number> = {};
+      for (const stmt of migration.statements) {
+        typeCounts[stmt.type] = (typeCounts[stmt.type] || 0) + 1;
       }
-    }
-
-    if (dataLossIssues.length > 0) {
-      output += "### Data Loss Analysis\n\n";
-      for (const issue of dataLossIssues) {
-        output += `**${issue.risk}**: ${issue.description}\n> **Mitigation**: ${issue.mitigation}\n\n`;
+      output += "### Operations\n\n| Operation | Count |\n|-----------|-------|\n";
+      for (const [type, count] of Object.entries(typeCounts)) {
+        output += `| ${type} | ${count} |\n`;
       }
+      output += "\n";
+
+      if (lockRisks.length > 0) {
+        output += "### Lock Risks\n\n";
+        for (const risk of lockRisks) {
+          output += `**${risk.severity}**: ${risk.risk}\n> **Recommendation**: ${risk.recommendation}\n\n`;
+        }
+      }
+
+      if (dataLossIssues.length > 0) {
+        output += "### Data Loss Analysis\n\n";
+        for (const issue of dataLossIssues) {
+          output += `**${issue.risk}**: ${issue.description}\n> **Mitigation**: ${issue.mitigation}\n\n`;
+        }
+      }
+
+      if (lockRisks.length === 0 && dataLossIssues.length === 0) {
+        output += "### No risks detected.\n";
+      }
+
+      output += formatParserWarnings(migration);
+
+      return { content: [{ type: "text" as const, text: output }] };
+    } catch (err) {
+      return {
+        content: [{
+          type: "text" as const,
+          text: `Error analyzing Liquibase YAML changelog: ${err instanceof Error ? err.message : String(err)}`,
+        }],
+      };
     }
-
-    if (lockRisks.length === 0 && dataLossIssues.length === 0) {
-      output += "### No risks detected.\n";
-    }
-
-    output += formatParserWarnings(migration);
-
-    return { content: [{ type: "text" as const, text: output }] };
   }
 );
 
@@ -248,33 +289,34 @@ server.tool(
     sql: z.string().describe("The SQL content of the migration file"),
   },
   async ({ filename, sql }) => {
-    const migration = parseMigration(filename, sql);
-    const lockRisks = analyzeLockRisks(migration);
-    const dataLossIssues = analyzeDataLoss(migration);
-    const riskScore = calculateRiskScore(lockRisks);
+    try {
+      const migration = parseMigration(filename, sql);
+      const lockRisks = analyzeLockRisks(migration);
+      const dataLossIssues = analyzeDataLoss(migration);
+      const riskScore = calculateRiskScore(lockRisks);
 
-    const criticalCount = lockRisks.filter(r => r.severity === "CRITICAL").length;
-    const highCount = lockRisks.filter(r => r.severity === "HIGH").length;
-    const mediumCount = lockRisks.filter(r => r.severity === "MEDIUM").length;
-    const lowCount = lockRisks.filter(r => r.severity === "LOW").length;
-    const dataLossCertain = dataLossIssues.filter(i => i.risk === "CERTAIN").length;
-    const dataLossLikely = dataLossIssues.filter(i => i.risk === "LIKELY").length;
-    const dataLossPossible = dataLossIssues.filter(i => i.risk === "POSSIBLE").length;
+      const criticalCount = lockRisks.filter(r => r.severity === "CRITICAL").length;
+      const highCount = lockRisks.filter(r => r.severity === "HIGH").length;
+      const mediumCount = lockRisks.filter(r => r.severity === "MEDIUM").length;
+      const lowCount = lockRisks.filter(r => r.severity === "LOW").length;
+      const dataLossCertain = dataLossIssues.filter(i => i.risk === "CERTAIN").length;
+      const dataLossLikely = dataLossIssues.filter(i => i.risk === "LIKELY").length;
+      const dataLossPossible = dataLossIssues.filter(i => i.risk === "POSSIBLE").length;
 
-    // Combine lock risk score with data loss severity for a complete picture
-    const dataLossScore = Math.min(100, dataLossCertain * 25 + dataLossLikely * 15 + dataLossPossible * 5);
-    const combinedScore = Math.min(100, riskScore + dataLossScore);
+      // Combine lock risk score with data loss severity for a complete picture
+      const dataLossScore = Math.min(100, dataLossCertain * 25 + dataLossLikely * 15 + dataLossPossible * 5);
+      const combinedScore = Math.min(100, riskScore + dataLossScore);
 
-    let verdict: string;
-    if (combinedScore >= 60 || dataLossCertain > 0) {
-      verdict = "HIGH RISK — requires careful review and testing before deployment";
-    } else if (combinedScore >= 30 || dataLossLikely > 0) {
-      verdict = "MODERATE RISK — review lock duration and test on staging";
-    } else {
-      verdict = "LOW RISK — standard migration, proceed with normal deployment";
-    }
+      let verdict: string;
+      if (combinedScore >= 60 || dataLossCertain > 0) {
+        verdict = "HIGH RISK — requires careful review and testing before deployment";
+      } else if (combinedScore >= 30 || dataLossLikely > 0) {
+        verdict = "MODERATE RISK — review lock duration and test on staging";
+      } else {
+        verdict = "LOW RISK — standard migration, proceed with normal deployment";
+      }
 
-    const output = `## Risk Score: ${combinedScore}/100
+      const output = `## Risk Score: ${combinedScore}/100
 
 **Verdict**: ${verdict}
 
@@ -292,9 +334,17 @@ server.tool(
 | Total statements | ${migration.statements.length} | — |
 `;
 
-    return {
-      content: [{ type: "text" as const, text: output }],
-    };
+      return {
+        content: [{ type: "text" as const, text: output }],
+      };
+    } catch (err) {
+      return {
+        content: [{
+          type: "text" as const,
+          text: `Error scoring migration: ${err instanceof Error ? err.message : String(err)}`,
+        }],
+      };
+    }
   }
 );
 
@@ -307,30 +357,39 @@ server.tool(
     sql: z.string().describe("The SQL content of the migration file"),
   },
   async ({ filename, sql }) => {
-    const migration = parseMigration(filename, sql);
-    const report = generateRollback(migration);
+    try {
+      const migration = parseMigration(filename, sql);
+      const report = generateRollback(migration);
 
-    let output = `## Rollback Script: ${filename}\n\n`;
-    output += `**Reversible**: ${report.fullyReversible ? "Yes — all operations can be automatically reversed" : "Partially — some operations require manual intervention"}\n`;
-    output += `**Statements**: ${report.statements.length}\n\n`;
+      let output = `## Rollback Script: ${filename}\n\n`;
+      output += `**Reversible**: ${report.fullyReversible ? "Yes — all operations can be automatically reversed" : "Partially — some operations require manual intervention"}\n`;
+      output += `**Statements**: ${report.statements.length}\n\n`;
 
-    if (report.warnings.length > 0) {
-      output += "### Warnings\n\n";
-      for (const w of report.warnings) {
-        output += `- ${w}\n`;
+      if (report.warnings.length > 0) {
+        output += "### Warnings\n\n";
+        for (const w of report.warnings) {
+          output += `- ${w}\n`;
+        }
+        output += "\n";
       }
-      output += "\n";
+
+      output += "### Rollback SQL\n\n```sql\n";
+      output += report.rollbackSql;
+      output += "\n```\n";
+
+      return { content: [{ type: "text" as const, text: output }] };
+    } catch (err) {
+      return {
+        content: [{
+          type: "text" as const,
+          text: `Error generating rollback: ${err instanceof Error ? err.message : String(err)}`,
+        }],
+      };
     }
-
-    output += "### Rollback SQL\n\n```sql\n";
-    output += report.rollbackSql;
-    output += "\n```\n";
-
-    return { content: [{ type: "text" as const, text: output }] };
   }
 );
 
-// Tool 5: detect_conflicts
+// Tool 6: detect_conflicts
 server.tool(
   "detect_conflicts",
   "Detect conflicts between two SQL migration files. Identifies same-table modifications, same-column changes, lock contention risks, and drop dependencies that could cause failures if applied concurrently or in the wrong order.",
