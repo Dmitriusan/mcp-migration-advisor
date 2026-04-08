@@ -183,14 +183,18 @@ server.tool(
       if (lockRisks.length > 0) {
         output += "### Lock Risks\n\n";
         for (const risk of lockRisks) {
-          output += `**${risk.severity}**: ${risk.risk}\n> **Recommendation**: ${risk.recommendation}\n\n`;
+          output += `**${risk.severity}**: ${risk.risk}\n`;
+          output += `> \`${risk.statement}\`\n`;
+          output += `> **Recommendation**: ${risk.recommendation}\n\n`;
         }
       }
 
       if (dataLossIssues.length > 0) {
         output += "### Data Loss Analysis\n\n";
         for (const issue of dataLossIssues) {
-          output += `**${issue.risk}**: ${issue.description}\n> **Mitigation**: ${issue.mitigation}\n\n`;
+          output += `**${issue.risk}**: ${issue.description}\n`;
+          output += `> \`${issue.statement}\`\n`;
+          output += `> **Mitigation**: ${issue.mitigation}\n\n`;
         }
       }
 
@@ -251,14 +255,18 @@ server.tool(
       if (lockRisks.length > 0) {
         output += "### Lock Risks\n\n";
         for (const risk of lockRisks) {
-          output += `**${risk.severity}**: ${risk.risk}\n> **Recommendation**: ${risk.recommendation}\n\n`;
+          output += `**${risk.severity}**: ${risk.risk}\n`;
+          output += `> \`${risk.statement}\`\n`;
+          output += `> **Recommendation**: ${risk.recommendation}\n\n`;
         }
       }
 
       if (dataLossIssues.length > 0) {
         output += "### Data Loss Analysis\n\n";
         for (const issue of dataLossIssues) {
-          output += `**${issue.risk}**: ${issue.description}\n> **Mitigation**: ${issue.mitigation}\n\n`;
+          output += `**${issue.risk}**: ${issue.description}\n`;
+          output += `> \`${issue.statement}\`\n`;
+          output += `> **Mitigation**: ${issue.mitigation}\n\n`;
         }
       }
 
