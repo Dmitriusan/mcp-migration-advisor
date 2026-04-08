@@ -168,7 +168,7 @@ server.tool(
       let output = `## Liquibase Changelog Analysis\n\n`;
       output += `**ChangeSets**: ${migration.description}\n`;
       output += `**Statements**: ${migration.statements.length}\n`;
-      output += `**Risk Score**: ${riskScore}/100${riskScore >= 60 ? " HIGH RISK" : riskScore >= 30 ? " MODERATE RISK" : " LOW RISK"}\n\n`;
+      output += `**Risk Score**: ${riskScore}/100${riskScore >= 60 ? " ⚠️ HIGH RISK" : riskScore >= 30 ? " ⚡ MODERATE RISK" : " ✅ LOW RISK"}\n\n`;
 
       const typeCounts: Record<string, number> = {};
       for (const stmt of migration.statements) {
@@ -219,7 +219,7 @@ server.tool(
 // Tool 3: analyze_liquibase_yaml
 server.tool(
   "analyze_liquibase_yaml",
-  "Analyze a Liquibase YAML changelog for lock risks, data loss potential, and unsafe patterns. Supports createTable, dropTable, addColumn, dropColumn, modifyDataType, createIndex, renameTable, renameColumn, and more.",
+  "Analyze a Liquibase YAML changelog for lock risks, data loss potential, and unsafe patterns. Supports createTable, dropTable, addColumn, dropColumn, modifyDataType, createIndex, addForeignKeyConstraint, renameTable, renameColumn, and more.",
   {
     yaml: z.string().describe("The Liquibase YAML changelog content"),
   },
@@ -240,7 +240,7 @@ server.tool(
       let output = `## Liquibase YAML Changelog Analysis\n\n`;
       output += `**ChangeSets**: ${migration.description}\n`;
       output += `**Statements**: ${migration.statements.length}\n`;
-      output += `**Risk Score**: ${riskScore}/100${riskScore >= 60 ? " HIGH RISK" : riskScore >= 30 ? " MODERATE RISK" : " LOW RISK"}\n\n`;
+      output += `**Risk Score**: ${riskScore}/100${riskScore >= 60 ? " ⚠️ HIGH RISK" : riskScore >= 30 ? " ⚡ MODERATE RISK" : " ✅ LOW RISK"}\n\n`;
 
       const typeCounts: Record<string, number> = {};
       for (const stmt of migration.statements) {
