@@ -124,8 +124,12 @@ export function analyzeDataLoss(migration: ParsedMigration): DataLossIssue[] {
           });
         }
 
-        // Detect UPDATE without WHERE
-        if (upper.match(/^UPDATE\b/) && !upper.includes("WHERE")) {
+        // Detect UPDATE without WHERE.
+        // Match UPDATE at the start of the string or after a statement separator
+        // (semicolon or newline), allowing leading whitespace on the line.
+        // This ensures detection works in multi-statement <sql> Liquibase blocks
+        // where UPDATE is not the very first statement.
+        if (upper.match(/(?:^|[;\n])\s*UPDATE\b/) && !upper.includes("WHERE")) {
           const tableMatch = stmt.raw.match(/UPDATE\s+(?:`|"|)?(?:\w+\.)?(\w+)/i);
           issues.push({
             risk: "LIKELY",

@@ -216,4 +216,21 @@ describe("Liquibase risk analysis", () => {
     const dataLoss = analyzeDataLoss(migration);
     expect(dataLoss.some(d => d.risk === "LIKELY")).toBe(true);
   });
+
+  it("detects UPDATE without WHERE inside a multi-statement <sql> block", () => {
+    // The UPDATE is not the first line of the block — the multiline flag is
+    // needed for the ^UPDATE regex to match it.
+    const xml = `
+    <databaseChangeLog>
+      <changeSet id="5" author="dev">
+        <sql>
+          INSERT INTO audit_log (event) VALUES ('migration-start');
+          UPDATE users SET migrated = true
+        </sql>
+      </changeSet>
+    </databaseChangeLog>`;
+    const migration = parseLiquibaseXml(xml);
+    const dataLoss = analyzeDataLoss(migration);
+    expect(dataLoss.some(d => d.risk === "LIKELY" && d.description.includes("UPDATE"))).toBe(true);
+  });
 });
