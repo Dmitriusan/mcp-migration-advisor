@@ -70,8 +70,9 @@ export function generateRollback(migration: ParsedMigration): RollbackReport {
 
   // Add Flyway schema_version cleanup
   if (migration.version) {
+    const escapedVersion = migration.version.replace(/'/g, "''");
     rollbackLines.push("-- Remove migration record from Flyway history:");
-    rollbackLines.push(`DELETE FROM flyway_schema_history WHERE version = '${migration.version}';`);
+    rollbackLines.push(`DELETE FROM flyway_schema_history WHERE version = '${escapedVersion}';`);
   }
 
   return {

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseMigration } from "../src/parsers/flyway-sql.js";
+import { parseMigration, type ParsedMigration } from "../src/parsers/flyway-sql.js";
 import { generateRollback } from "../src/generators/rollback.js";
 
 describe("Rollback Generator — complex migrations", () => {
@@ -123,5 +123,23 @@ describe("Rollback Generator — complex migrations", () => {
     expect(report.rollbackSql).not.toContain("Reverses version:");
     // No Flyway cleanup since no version
     expect(report.rollbackSql).not.toContain("flyway_schema_history");
+  });
+
+  it("escapes single quotes in version when generating flyway_schema_history cleanup", () => {
+    // generateRollback accepts any ParsedMigration — version strings from non-Flyway
+    // sources (e.g., Liquibase changeset IDs) may contain arbitrary characters.
+    // The DELETE statement must use SQL-standard single-quote escaping.
+    const migration: ParsedMigration = {
+      filename: "changelog.xml",
+      version: "1.0-O'Reilly",
+      description: "test changeset",
+      isRepeatable: false,
+      statements: [],
+      warnings: [],
+    };
+    const report = generateRollback(migration);
+    expect(report.rollbackSql).toContain("WHERE version = '1.0-O''Reilly'");
+    // Must not produce an unescaped single quote (which would break copy-pasted SQL)
+    expect(report.rollbackSql).not.toContain("WHERE version = '1.0-O'Reilly'");
   });
 });
