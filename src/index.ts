@@ -37,7 +37,7 @@ function formatParserWarnings(migration: ParsedMigration): string {
 
 // Handle --help
 if (process.argv.includes("--help") || process.argv.includes("-h")) {
-  console.log(`mcp-migration-advisor v0.2.10 — MCP server for database migration risk analysis
+  console.log(`mcp-migration-advisor v0.2.11 — MCP server for database migration risk analysis
 
 Usage:
   mcp-migration-advisor [options]
@@ -57,7 +57,7 @@ Tools provided:
 
 const server = new McpServer({
   name: "mcp-migration-advisor",
-  version: "0.2.10",
+  version: "0.2.11",
 });
 
 // Tool 1: analyze_migration
