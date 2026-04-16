@@ -400,7 +400,7 @@ server.tool(
 // Tool 6: detect_conflicts
 server.tool(
   "detect_conflicts",
-  "Detect conflicts between two SQL migration files. Identifies same-table modifications, same-column changes, lock contention risks, and drop dependencies that could cause failures if applied concurrently or in the wrong order.",
+  "Detect structural conflicts between two SQL migration files — same-table modifications, same-column changes, lock contention, and drop dependencies. Use this when two migrations touch the same schema objects and you need to know if ordering or concurrent execution matters. Note: only structural conflicts are detected (same table/column); semantic conflicts such as two migrations adding different indexes on the same column are not reported.",
   {
     filename_a: z.string().describe("First migration filename (e.g., V3__add_email.sql)"),
     sql_a: z.string().describe("SQL content of the first migration"),
