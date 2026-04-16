@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { parseLiquibaseYaml } from "../src/parsers/liquibase-yaml.js";
+import { analyzeDataLoss } from "../src/analyzers/data-loss.js";
 
 describe("parseLiquibaseYaml", () => {
   it("parses createTable with columns", () => {
@@ -433,5 +434,69 @@ databaseChangeLog:
 `;
     const migration = parseLiquibaseYaml(yaml);
     expect(migration.version).toBe("42");
+  });
+});
+
+describe("data-loss detection in Liquibase YAML raw SQL blocks", () => {
+  it("detects TRUNCATE in an inline sql block", () => {
+    const yaml = `
+databaseChangeLog:
+  - changeSet:
+      id: "dl-1"
+      author: "dev"
+      changes:
+        - sql: TRUNCATE TABLE sessions
+`;
+    const migration = parseLiquibaseYaml(yaml);
+    const issues = analyzeDataLoss(migration);
+    expect(issues).toHaveLength(1);
+    expect(issues[0].risk).toBe("CERTAIN");
+    expect(issues[0].description).toMatch(/TRUNCATE/);
+  });
+
+  it("detects DELETE without WHERE in an inline sql block", () => {
+    const yaml = `
+databaseChangeLog:
+  - changeSet:
+      id: "dl-2"
+      author: "dev"
+      changes:
+        - sql: DELETE FROM expired_tokens
+`;
+    const migration = parseLiquibaseYaml(yaml);
+    const issues = analyzeDataLoss(migration);
+    expect(issues).toHaveLength(1);
+    expect(issues[0].risk).toBe("CERTAIN");
+    expect(issues[0].description).toMatch(/DELETE without WHERE/);
+  });
+
+  it("does not flag DELETE with WHERE in an inline sql block", () => {
+    const yaml = `
+databaseChangeLog:
+  - changeSet:
+      id: "dl-3"
+      author: "dev"
+      changes:
+        - sql: DELETE FROM expired_tokens WHERE created_at < NOW() - INTERVAL '30 days'
+`;
+    const migration = parseLiquibaseYaml(yaml);
+    const issues = analyzeDataLoss(migration);
+    expect(issues).toHaveLength(0);
+  });
+
+  it("detects UPDATE without WHERE in an inline sql block", () => {
+    const yaml = `
+databaseChangeLog:
+  - changeSet:
+      id: "dl-4"
+      author: "dev"
+      changes:
+        - sql: UPDATE users SET status = 'active'
+`;
+    const migration = parseLiquibaseYaml(yaml);
+    const issues = analyzeDataLoss(migration);
+    expect(issues).toHaveLength(1);
+    expect(issues[0].risk).toBe("LIKELY");
+    expect(issues[0].description).toMatch(/UPDATE without WHERE/);
   });
 });
