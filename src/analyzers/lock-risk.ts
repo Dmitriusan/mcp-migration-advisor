@@ -105,11 +105,12 @@ function analyzeStatement(stmt: DDLStatement): LockRisk[] {
     }
 
     case "DROP_TABLE": {
+      const dropTableName = stmt.tableName ?? "unknown";
       risks.push({
         severity: "HIGH",
         statement: truncate(stmt.raw),
         tableName: stmt.tableName,
-        risk: `DROP TABLE '${stmt.tableName}' is irreversible and acquires ACCESS EXCLUSIVE lock.`,
+        risk: `DROP TABLE '${dropTableName}' is irreversible and acquires ACCESS EXCLUSIVE lock.`,
         recommendation: "Ensure no foreign keys reference this table. Consider renaming first (expand-contract) to allow rollback.",
       });
       if (stmt.details.cascade === "true") {

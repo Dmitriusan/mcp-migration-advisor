@@ -1,6 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { parseMigration } from "../src/parsers/flyway-sql.js";
+import { parseMigration, type ParsedMigration } from "../src/parsers/flyway-sql.js";
 import { detectConflicts } from "../src/analyzers/conflicts.js";
+import { analyzeLockRisks } from "../src/analyzers/lock-risk.js";
+import { analyzeDataLoss } from "../src/analyzers/data-loss.js";
 
 describe("Migration parser — edge case inputs", () => {
   it("should handle empty SQL content", () => {
@@ -240,5 +242,67 @@ describe("Migration parser — schema-qualified table names", () => {
     // Both modify the same column on the same table — should flag SAME_COLUMN
     expect(report.conflicts.length).toBeGreaterThan(0);
     expect(report.conflicts[0].table).toBe("users");
+  });
+});
+
+// --- Null tableName handling in analyzers ---
+// DDLStatement.tableName is string | null; analyzers must not interpolate null directly
+// into user-visible messages (e.g. "DROP TABLE 'null'").
+
+function makeNullTableNameMigration(): ParsedMigration {
+  return {
+    version: "1",
+    description: "test",
+    filename: "V1__test.sql",
+    isRepeatable: false,
+    warnings: [],
+    statements: [
+      {
+        type: "DROP_TABLE",
+        raw: "DROP TABLE some_table",
+        tableName: null,
+        columnName: null,
+        details: {},
+      },
+    ],
+  };
+}
+
+describe("analyzeLockRisks — null tableName", () => {
+  it("should not produce the string 'null' in DROP TABLE risk message", () => {
+    const risks = analyzeLockRisks(makeNullTableNameMigration());
+    const dropRisk = risks.find((r) => r.statement.includes("DROP TABLE"));
+    expect(dropRisk).toBeDefined();
+    expect(dropRisk!.risk).not.toContain("'null'");
+    expect(dropRisk!.risk).toContain("'unknown'");
+  });
+
+  it("should use actual tableName when it is available", () => {
+    const migration = makeNullTableNameMigration();
+    migration.statements[0].tableName = "users";
+    const risks = analyzeLockRisks(migration);
+    const dropRisk = risks.find((r) => r.severity === "HIGH");
+    expect(dropRisk).toBeDefined();
+    expect(dropRisk!.risk).toContain("'users'");
+    expect(dropRisk!.risk).not.toContain("'null'");
+    expect(dropRisk!.risk).not.toContain("'unknown'");
+  });
+});
+
+describe("analyzeDataLoss — null tableName", () => {
+  it("should not produce the string 'null' in DROP TABLE description", () => {
+    const issues = analyzeDataLoss(makeNullTableNameMigration());
+    expect(issues.length).toBeGreaterThan(0);
+    expect(issues[0].description).not.toContain("'null'");
+    expect(issues[0].description).toContain("'unknown'");
+  });
+
+  it("should use actual tableName in description when it is available", () => {
+    const migration = makeNullTableNameMigration();
+    migration.statements[0].tableName = "orders";
+    const issues = analyzeDataLoss(migration);
+    expect(issues[0].description).toContain("'orders'");
+    expect(issues[0].description).not.toContain("'null'");
+    expect(issues[0].description).not.toContain("'unknown'");
   });
 });

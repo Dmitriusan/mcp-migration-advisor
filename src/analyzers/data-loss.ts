@@ -44,11 +44,12 @@ export function analyzeDataLoss(migration: ParsedMigration): DataLossIssue[] {
 
       case "DROP_TABLE": {
         const cascade = upper.includes("CASCADE");
+        const dropTableName = stmt.tableName ?? "unknown";
         issues.push({
           risk: "CERTAIN",
           statement: truncate(stmt.raw),
           tableName: stmt.tableName,
-          description: `Dropping table '${stmt.tableName}' permanently deletes all data.${cascade ? " CASCADE will also drop dependent objects." : ""}`,
+          description: `Dropping table '${dropTableName}' permanently deletes all data.${cascade ? " CASCADE will also drop dependent objects." : ""}`,
           mitigation: "Ensure a backup exists. Consider renaming the table first and dropping in a later migration.",
         });
         break;
