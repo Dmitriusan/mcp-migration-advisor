@@ -8,9 +8,13 @@
  *   score_risk          — Calculate risk score for a migration
  */
 
+import { createRequire } from "module";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
+
+const require = createRequire(import.meta.url);
+const { version: packageVersion } = require("../package.json") as { version: string };
 
 import { parseMigration, ParsedMigration } from "./parsers/flyway-sql.js";
 import { parseLiquibaseXml } from "./parsers/liquibase-xml.js";
@@ -37,7 +41,7 @@ function formatParserWarnings(migration: ParsedMigration): string {
 
 // Handle --help
 if (process.argv.includes("--help") || process.argv.includes("-h")) {
-  console.log(`mcp-migration-advisor v0.2.12 — MCP server for database migration risk analysis
+  console.log(`mcp-migration-advisor v${packageVersion} — MCP server for database migration risk analysis
 
 Usage:
   mcp-migration-advisor [options]
@@ -57,13 +61,13 @@ Tools provided:
 
 const server = new McpServer({
   name: "mcp-migration-advisor",
-  version: "0.2.12",
+  version: packageVersion,
 });
 
 // Tool 1: analyze_migration
 server.tool(
   "analyze_migration",
-  "Analyze a SQL migration file for lock risks, data loss potential, and unsafe patterns. Supports Flyway (V__*.sql) and plain SQL.",
+  "Analyze a SQL migration file for lock risks, data loss potential, and unsafe patterns. Detects: ACCESS EXCLUSIVE locks (DROP TABLE, ADD COLUMN NOT NULL, type changes, CREATE INDEX without CONCURRENTLY), data loss operations (TRUNCATE, DELETE without WHERE, UPDATE without WHERE, DROP COLUMN), and cascade risks. Supports Flyway versioned (V__*.sql) and repeatable (R__*.sql) migrations, as well as plain SQL files.",
   {
     filename: z.string().describe("Migration filename (e.g., V2__add_user_email.sql)"),
     sql: z.string().describe("The SQL content of the migration file"),
