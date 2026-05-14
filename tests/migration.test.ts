@@ -394,6 +394,28 @@ describe("analyzeDataLoss", () => {
     const issues = analyzeDataLoss(migration);
     expect(issues).toHaveLength(0);
   });
+
+  it("does not flag INSERT into a table whose name contains 'truncate' as data loss", () => {
+    // 'truncate' is a substring of the table name — must not trigger TRUNCATE detection
+    const sql = "INSERT INTO truncate_log (event, created_at) VALUES ('deploy', NOW());";
+    const migration = parseMigration("V1__test.sql", sql);
+    const issues = analyzeDataLoss(migration);
+    expect(issues.some(i => i.description.includes("TRUNCATE"))).toBe(false);
+  });
+
+  it("flags TRUNCATE keyword at word boundary as CERTAIN data loss even when near similar table names", () => {
+    // Both statements in one migration: a real TRUNCATE and a reference to truncate_log
+    const sql = `
+      INSERT INTO truncate_log (event) VALUES ('start');
+      TRUNCATE TABLE sessions;
+    `;
+    const migration = parseMigration("V1__test.sql", sql);
+    const issues = analyzeDataLoss(migration);
+    const truncateIssues = issues.filter(i => i.description.includes("TRUNCATE"));
+    // Only the actual TRUNCATE TABLE sessions should fire, not the INSERT
+    expect(truncateIssues).toHaveLength(1);
+    expect(truncateIssues[0].risk).toBe("CERTAIN");
+  });
 });
 
 // --- Integration: full migration analysis ---

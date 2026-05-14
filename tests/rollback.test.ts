@@ -90,6 +90,18 @@ describe("Rollback Generator", () => {
     expect(report.warnings.some(w => w.includes("original default"))).toBe(true);
   });
 
+  it("reverses DROP NOT NULL to SET NOT NULL with a non-null warning", () => {
+    // DROP NOT NULL is structurally reversible, but re-adding NOT NULL can fail
+    // if any rows are NULL — the generator emits a warning to flag this.
+    const migration = parseMigration("V9d__drop_not_null.sql",
+      "ALTER TABLE users ALTER COLUMN email DROP NOT NULL;"
+    );
+    const report = generateRollback(migration);
+    expect(report.fullyReversible).toBe(true);
+    expect(report.rollbackSql).toContain("SET NOT NULL");
+    expect(report.warnings.some(w => w.includes("non-null"))).toBe(true);
+  });
+
   it("handles multi-statement migration in reverse order", () => {
     const sql = `
       CREATE TABLE orders (id SERIAL PRIMARY KEY, user_id INT);
