@@ -151,7 +151,7 @@ server.tool(
 // Tool 2: analyze_liquibase
 server.tool(
   "analyze_liquibase",
-  "Analyze a Liquibase XML changelog for lock risks, data loss potential, and unsafe patterns. Supports createTable, dropTable, addColumn, dropColumn, modifyDataType, createIndex, addForeignKeyConstraint, renameTable, renameColumn, and more.",
+  "Analyze a Liquibase XML changelog for lock risks, data loss potential, and unsafe patterns. Supports all major change types: createTable, dropTable, addColumn, dropColumn, modifyDataType, addNotNullConstraint, createIndex, dropIndex, addForeignKeyConstraint, dropForeignKeyConstraint, renameTable, renameColumn. Inline <sql> changeSets are also analyzed for TRUNCATE, DELETE without WHERE, and UPDATE without WHERE. Returns lock risk severity (ACCESS EXCLUSIVE, SHARE locks) and data loss risk per operation.",
   {
     xml: z.string().describe("The Liquibase XML changelog content"),
   },
@@ -223,7 +223,7 @@ server.tool(
 // Tool 3: analyze_liquibase_yaml
 server.tool(
   "analyze_liquibase_yaml",
-  "Analyze a Liquibase YAML changelog for lock risks, data loss potential, and unsafe patterns. Supports createTable, dropTable, addColumn, dropColumn, modifyDataType, createIndex, addForeignKeyConstraint, renameTable, renameColumn, and more.",
+  "Analyze a Liquibase YAML changelog for lock risks, data loss potential, and unsafe patterns. Supports all major change types: createTable, dropTable, addColumn, dropColumn, modifyDataType, addNotNullConstraint, createIndex, dropIndex, addForeignKeyConstraint, dropForeignKeyConstraint, renameTable, renameColumn. Inline sql changeSets are also analyzed for TRUNCATE, DELETE without WHERE, and UPDATE without WHERE. Returns lock risk severity (ACCESS EXCLUSIVE, SHARE locks) and data loss risk per operation.",
   {
     yaml: z.string().describe("The Liquibase YAML changelog content"),
   },
