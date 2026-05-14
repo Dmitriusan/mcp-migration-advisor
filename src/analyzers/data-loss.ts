@@ -101,8 +101,9 @@ export function analyzeDataLoss(migration: ParsedMigration): DataLossIssue[] {
         // Skip data manipulation checks for CREATE statements to avoid false positives.
         if (/^CREATE\b/i.test(stmt.raw.trim())) break;
 
-        // Detect TRUNCATE
-        if (upper.includes("TRUNCATE")) {
+        // Detect TRUNCATE — use word-boundary match to avoid false positives
+        // on table/column names containing "truncate" (e.g. truncate_log).
+        if (/\bTRUNCATE\b/i.test(stmt.raw)) {
           const tableMatch = stmt.raw.match(/TRUNCATE\s+(?:TABLE\s+)?(?:`|"|)?(?:\w+\.)?(\w+)/i);
           issues.push({
             risk: "CERTAIN",
