@@ -233,4 +233,38 @@ describe("Liquibase risk analysis", () => {
     const dataLoss = analyzeDataLoss(migration);
     expect(dataLoss.some(d => d.risk === "LIKELY" && d.description.includes("UPDATE"))).toBe(true);
   });
+
+  it("lock-risk-only migration produces empty data loss array (separate-section boundary)", () => {
+    // CREATE INDEX without CONCURRENTLY → HIGH lock risk, zero data loss.
+    // Verifies that the two sections can be independent: one empty, one non-empty.
+    const xml = `
+    <databaseChangeLog>
+      <changeSet id="1" author="dev">
+        <createIndex tableName="users" indexName="idx_users_email">
+          <column name="email"/>
+        </createIndex>
+      </changeSet>
+    </databaseChangeLog>`;
+    const migration = parseLiquibaseXml(xml);
+    const lockRisks = analyzeLockRisks(migration);
+    const dataLoss = analyzeDataLoss(migration);
+    expect(lockRisks.some(r => r.severity === "HIGH")).toBe(true);
+    expect(dataLoss).toHaveLength(0);
+  });
+
+  it("data-loss-only migration produces empty lock risks array (separate-section boundary)", () => {
+    // DELETE without WHERE → CERTAIN data loss, zero lock risk (DELETE is not in lock patterns).
+    // Verifies that the two sections can be independent: one non-empty, one empty.
+    const xml = `
+    <databaseChangeLog>
+      <changeSet id="1" author="dev">
+        <sql>DELETE FROM old_sessions</sql>
+      </changeSet>
+    </databaseChangeLog>`;
+    const migration = parseLiquibaseXml(xml);
+    const lockRisks = analyzeLockRisks(migration);
+    const dataLoss = analyzeDataLoss(migration);
+    expect(lockRisks).toHaveLength(0);
+    expect(dataLoss.some(d => d.risk === "CERTAIN" && d.description.includes("DELETE"))).toBe(true);
+  });
 });

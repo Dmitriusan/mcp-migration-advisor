@@ -191,6 +191,8 @@ server.tool(
           output += `> \`${risk.statement}\`\n`;
           output += `> **Recommendation**: ${risk.recommendation}\n\n`;
         }
+      } else {
+        output += "### Lock Risks\n\nNo lock risks detected.\n\n";
       }
 
       if (dataLossIssues.length > 0) {
@@ -200,10 +202,8 @@ server.tool(
           output += `> \`${issue.statement}\`\n`;
           output += `> **Mitigation**: ${issue.mitigation}\n\n`;
         }
-      }
-
-      if (lockRisks.length === 0 && dataLossIssues.length === 0) {
-        output += "### No risks detected.\n";
+      } else {
+        output += "### Data Loss Analysis\n\nNo data loss risks detected.\n\n";
       }
 
       output += formatParserWarnings(migration);
@@ -263,6 +263,8 @@ server.tool(
           output += `> \`${risk.statement}\`\n`;
           output += `> **Recommendation**: ${risk.recommendation}\n\n`;
         }
+      } else {
+        output += "### Lock Risks\n\nNo lock risks detected.\n\n";
       }
 
       if (dataLossIssues.length > 0) {
@@ -272,10 +274,8 @@ server.tool(
           output += `> \`${issue.statement}\`\n`;
           output += `> **Mitigation**: ${issue.mitigation}\n\n`;
         }
-      }
-
-      if (lockRisks.length === 0 && dataLossIssues.length === 0) {
-        output += "### No risks detected.\n";
+      } else {
+        output += "### Data Loss Analysis\n\nNo data loss risks detected.\n\n";
       }
 
       output += formatParserWarnings(migration);
@@ -334,8 +334,8 @@ server.tool(
 
 ### Breakdown
 
-| Category | Count | Score contribution |
-|----------|-------|--------------------|
+| Category | Count | Weight (sum, pre-cap) |
+|----------|-------|----------------------|
 | CRITICAL lock risks | ${criticalCount} | ${criticalCount * 30} |
 | HIGH lock risks | ${highCount} | ${highCount * 20} |
 | MEDIUM lock risks | ${mediumCount} | ${mediumCount * 10} |
@@ -344,6 +344,8 @@ server.tool(
 | Likely data loss | ${dataLossLikely} | ${dataLossLikely * 15} |
 | Possible data loss | ${dataLossPossible} | ${dataLossPossible * 5} |
 | Total statements | ${migration.statements.length} | — |
+
+*Lock risk and data loss subtotals are each capped at 100; combined score is capped at 100.*
 `;
 
       return {

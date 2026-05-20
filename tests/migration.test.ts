@@ -467,4 +467,18 @@ describe("full migration analysis", () => {
     expect(dataLossIssues).toHaveLength(0);
     expect(score).toBeLessThan(30);
   });
+
+  it("calculateRiskScore caps at 100 when weights sum exceeds 100", () => {
+    // 4 CRITICAL risks × 30 = 120 pre-cap — score must not exceed 100.
+    const risks = Array.from({ length: 4 }, (_, i) => ({
+      severity: "CRITICAL" as const,
+      statement: `ALTER TABLE t${i} ALTER COLUMN x TYPE TEXT`,
+      tableName: `t${i}`,
+      risk: "type change",
+      recommendation: "expand-contract",
+    }));
+    const score = calculateRiskScore(risks);
+    expect(risks.length * 30).toBeGreaterThan(100);
+    expect(score).toBe(100);
+  });
 });
